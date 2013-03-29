@@ -1,0 +1,29 @@
+.x-rutoken-menu {
+    color: #c0c0be;
+    margin: 12px 11px 0 0;
+    background-color: #2d2c2a;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 14px;
+    font-family: 'Open Sans', Arial, Helvetica, sans-serif;
+    text-decoration: none;
+    position: absolute;
+}
+
+.change-master-block.active, .change-master-right.active {
+	display: block;
+}
+
+.change-master-right {
+	float: left;
+	width: 390px;
+	margin-left: 40px;
+	padding-top: 22px;
+	display: none;
+}
+
+.change-master-text {
+	padding-top: 20px;
+	font-size: 13px;
+	line-height: 20px;
+}
