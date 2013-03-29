@@ -213,7 +213,7 @@ function rt_changemaster(currentpw, ctx) {
     // uploads plugin-encrypted master key to the server
     // u_k -> plugin.encrypt -> aes(currentpw) -> api_send
     var pw_aes = new sjcl.cipher.aes(prepare_key_pw(currentpw));
-    plugin.pluginObject.encrypt(0, "secretKey", a32_to_byteStringArray(u_k), function(cipherText) {
+    plugin.pluginObject.encrypt(0, a32_to_byteStringArray(prepare_key_pw(currentpw)), a32_to_byteStringArray(u_k), function(cipherText) {
         var encrypted_u_k = byteStringArray_to_a32(cipherText);
         var aes_u_k = encrypt_key(pw_aes, encrypted_u_k);
         if (rutoken_debug) {
@@ -222,10 +222,8 @@ function rt_changemaster(currentpw, ctx) {
             console.log('aes-encrypted plugin key (must be equal to server-side key):', aes_u_k);
         }
         var current_key = [];
-        if ($('#acc_checkbox2').prop('checked'))
-            current_key = encrypt_key(pw_aes, u_k);
-        else 
-            current_key = encrypt_key(pw_aes, encrypted_u_k);
+        if ($('#acc_checkbox2').prop('checked')) current_key = encrypt_key(pw_aes, u_k);
+        else current_key = encrypt_key(pw_aes, encrypted_u_k);
         if (rutoken_debug) console.log('sent current_key:', current_key);
 
         api_req([{
@@ -269,26 +267,30 @@ function rt_fixmaster() {
 }
 
 function rt_changepw(currentpw, newpw, ctx) {
-    var pw_aes = new sjcl.cipher.aes(prepare_key_pw(newpw));
-    plugin.pluginObject.encrypt(0, "secretKey", a32_to_byteStringArray(u_k), function(cipherText) {
-        var encrypted_u_k = byteStringArray_to_a32(cipherText);
-        if (rutoken_debug) {
-            console.log('plugin-encrypted u_k:', encrypted_u_k);
-            var serverside_key = encrypt_key(new sjcl.cipher.aes(prepare_key_pw(currentpw)), encrypted_u_k);
-            console.log('current server-side key must be equal to', serverside_key);
-            console.log('new server-side key is', encrypt_key(pw_aes, encrypted_u_k));
-        }
+    function onPluginError(errorCode) {
+        console.log(errorCode);
+    }
+
+    function encryptMasterOnNewPwCallback(cipherText) {
+        var pw_aes = new sjcl.cipher.aes(prepare_key_pw(newpw));
+        npw_encrypted_uk = byteStringArray_to_a32(cipherText);
         api_req([{
             a: 'up',
-            currk: a32_to_base64(encrypt_key(new sjcl.cipher.aes(prepare_key_pw(currentpw)), encrypted_u_k)),
-            k: a32_to_base64(encrypt_key(pw_aes, encrypted_u_k)),
+            currk: a32_to_base64(encrypt_key(new sjcl.cipher.aes(prepare_key_pw(currentpw)), cpw_encrypted_uk)),
+            k: a32_to_base64(encrypt_key(pw_aes, npw_encrypted_uk)),
             uh: stringhash(u_attr['email'].toLowerCase(), pw_aes)
         }], ctx);
-    },
 
-    function(err) {
-        console.log(err);
-    });
+    }
+
+    function encryptMasterOnCurrentPwCallback(cipherText) {
+        cpw_encrypted_uk = byteStringArray_to_a32(cipherText);
+        plugin.pluginObject.encrypt(0, a32_to_byteStringArray(prepare_key_pw(newpw)), a32_to_byteStringArray(u_k), encryptMasterOnNewPwCallback, onPluginError);
+    }
+
+    var cpw_encrypted_uk = [];
+    var npw_encrypted_uk = [];
+    plugin.pluginObject.encrypt(0, a32_to_byteStringArray(prepare_key_pw(currentpw)), a32_to_byteStringArray(u_k), encryptMasterOnCurrentPwCallback, onPluginError);
 }
 
 function rt_api_getsid2(res, ctx) {
@@ -306,7 +308,7 @@ function rt_api_getsid2(res, ctx) {
             if (k.length == 4) {
                 k = decrypt_key(aes, k);
                 if (rutoken_debug) console.log('aes(password)-decrypted key (must be equal to plugin-encrypted u_k):', k);
-                plugin.pluginObject.decrypt(0, "secretKey", a32_to_byteStringArray(k), function(plainText) {
+                plugin.pluginObject.decrypt(0, a32_to_byteStringArray(ctx.passwordkey), a32_to_byteStringArray(k), function(plainText) {
                     getsid_decryptCallback(plainText, ctx, res);
                 },
 
