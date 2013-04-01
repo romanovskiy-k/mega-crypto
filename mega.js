@@ -294,6 +294,44 @@ function rt_changepw(currentpw, newpw, ctx) {
 }
 
 function rt_api_getsid2(res, ctx) {
+    function rt_api_getsid2_final(ctx, r, pluginErrorCode) {
+        console.log(new Date().getTime());
+        if (pluginErrorCode) console.log('plugin error #', pluginErrorCode);
+        ctx.result(ctx, r);
+    }
+
+    function getsid_decryptCallback(decryptedKey, ctx, res) {
+        var k = byteStringArray_to_a32(decryptedKey);
+        if (rutoken_debug) {
+            var true_uk = [11135156, 514393077, 1398720439, 1994211984];
+            console.log('plugin-decrypted key must be equal to u_k which is', arraysEqual(k, true_uk), k);
+        }
+        var t;
+        var r = false;
+        var aes = new sjcl.cipher.aes(k);
+        if (typeof res[0].tsid == 'string') {
+            t = base64urldecode(res[0].tsid);
+            if (a32_to_str(encrypt_key(aes, str_to_a32(t.substr(0, 16)))) == t.substr(-16)) r = [k, res[0].tsid];
+        } else if (typeof res[0].csid == 'string') {
+            var t = mpi2b(base64urldecode(res[0].csid));
+            var privk = a32_to_str(decrypt_key(aes, base64_to_a32(res[0].privk)));
+            var rsa_privk = Array(4);
+
+            // decompose private key
+            for (var i = 0; i < 4; i++) {
+                var l = ((privk.charCodeAt(0) * 256 + privk.charCodeAt(1) + 7) >> 3) + 2;
+                rsa_privk[i] = mpi2b(privk.substr(0, l));
+                if (typeof rsa_privk[i] == 'number') break;
+                privk = privk.substr(l);
+            }
+            // check format
+            if (i == 4 && privk.length < 16) {
+                r = [k, base64urlencode(crypto_rsadecrypt(t, rsa_privk).substr(0, 43)), rsa_privk];
+            }
+        }
+        rt_api_getsid2_final(ctx, r);
+    }
+
     console.log(new Date().getTime());
     var k;
     var r = false;
@@ -320,43 +358,7 @@ function rt_api_getsid2(res, ctx) {
     } else rt_api_getsid2_final(ctx, r);
 }
 
-function rt_api_getsid2_final(ctx, r, pluginErrorCode) {
-    console.log(new Date().getTime());
-    if (pluginErrorCode) console.log('plugin error #', pluginErrorCode);
-    ctx.result(ctx, r);
-}
 
-function getsid_decryptCallback(decryptedKey, ctx, res) {
-    var k = byteStringArray_to_a32(decryptedKey);
-    var true_uk = [11135156, 514393077, 1398720439, 1994211984];
-    if (rutoken_debug) console.log('plugin-decrypted key must be equal to u_k which is', arraysEqual(k, true_uk), k);
-
-    var t;
-    var r = false;
-    var aes = new sjcl.cipher.aes(k);
-    if (typeof res[0].tsid == 'string') {
-        t = base64urldecode(res[0].tsid);
-        if (a32_to_str(encrypt_key(aes, str_to_a32(t.substr(0, 16)))) == t.substr(-16)) r = [k, res[0].tsid];
-    } else if (typeof res[0].csid == 'string') {
-        var t = mpi2b(base64urldecode(res[0].csid));
-        var privk = a32_to_str(decrypt_key(aes, base64_to_a32(res[0].privk)));
-        var rsa_privk = Array(4);
-
-        // decompose private key
-        for (var i = 0; i < 4; i++) {
-            var l = ((privk.charCodeAt(0) * 256 + privk.charCodeAt(1) + 7) >> 3) + 2;
-            rsa_privk[i] = mpi2b(privk.substr(0, l));
-            if (typeof rsa_privk[i] == 'number') break;
-            privk = privk.substr(l);
-        }
-        // check format
-        if (i == 4 && privk.length < 16) {
-            r = [k, base64urlencode(crypto_rsadecrypt(t, rsa_privk).substr(0, 43)), rsa_privk];
-        }
-    }
-    console.log(new Date().getTime());
-    ctx.result(ctx, r);
-}
 
 // plugin wrappers
 
