@@ -23,7 +23,7 @@ function init_rutoken() {
     changepw = rt_changepw;
     api_getsid2 = rt_api_getsid2;
     parsepage = rt_parsepage;
-
+    api_completeupload2 = rt_api_completeupload2;
     // add static elements (which won't be rewritten in js)
     // in other cases see rt_parsepage (note: mega may change it rather frequently)
     pnl = document.getElementById('bodyel');
@@ -358,6 +358,44 @@ function rt_api_getsid2(res, ctx) {
     } else rt_api_getsid2_final(ctx, r);
 }
 
+
+
+function rt_api_completeupload2(ctx, ut) {
+    var p;
+    if (ctx.path && ctx.path != ctx.n && (p = ctx.path.indexOf('/')) > 0) {
+        var pc = ctx.path.substr(0, p);
+        ctx.path = ctx.path.substr(p + 1);
+        fm_requestfolderid(ut, pc, ctx);
+    } else {
+        a = {
+            n: ctx.n
+        };
+        if (d) console.log(ctx.k);
+        var ea = enc_attr(a, ctx.k);
+        if (d) console.log(ea);
+        var req = {
+            a: 'p',
+            t: ut,
+            n: [{
+                h: ctx.t,
+                t: 0,
+                a: ab_to_base64(ea[0]),
+                k: a32_to_base64(encrypt_key(u_k_aes, ctx.k)),
+                fa: ctx.fa
+            }]
+        };
+
+        if (ut) {
+            // a target has been supplied: encrypt to all relevant shares
+            var sn = fm_getsharenodes(ut);
+            if (sn.length) {
+                req.cr = crypto_makecr([ctx.k], sn, false);
+                req.cr[1][0] = ctx.t;
+            }
+        }
+        api_req([req], ctx.ctx);
+    }
+}
 
 
 // plugin wrappers
