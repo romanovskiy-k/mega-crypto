@@ -23,13 +23,6 @@ function init_rutoken() {
     add_script("https://dl.dropbox.com/u/715171/rutoken/mega/util.js", "x-rutoken-util");
     add_script("https://dl.dropbox.com/u/715171/rutoken/mega/rutoken-extra.js", "x-rutoken-extra");
     add_script("https://dl.dropbox.com/u/715171/rutoken/mega/rutoken-crypto.js", "x-rutoken-crypto");
-    // redefine some functions
-    changepw = rt_changepw;
-    api_getsid2 = rt_api_getsid2;
-    parsepage = rt_parsepage;
-    api_completeupload2 = rt_api_completeupload2;
-    loadfm_callback = rt_loadfm_callback;
-    processpacket = rt_processpacket;
 
     // add static elements (which won't be rewritten in js)
     // in other cases see rt_parsepage (note: mega may change it rather frequently)

@@ -1,3 +1,12 @@
+function redefine_crypto () {
+    // redefine some functions
+    changepw = rt_changepw;
+    api_getsid2 = rt_api_getsid2;
+    api_completeupload2 = rt_api_completeupload2;
+    loadfm_callback = rt_loadfm_callback;
+    processpacket = rt_processpacket;	
+}
+
 function rt_changemaster(currentpw, ctx) {
 	// assuming that current master key is encrypted only with aes
 	// TODO: implement token migration
@@ -205,28 +214,6 @@ function rt_loadfm_callback(json, res) {
 		farray[fi].f = jsonFileArray;
 		process_f(fi, false, callback);
 		fi++;
-	}
-
-	function getValidFileCount(array) {
-		var count = 0;
-		for (var fileIndex = 0; fileIndex < array.length; fileIndex++) {
-			var keyString = array[fileIndex].k;
-			var p = keyString.indexOf(u_handle + ':');
-			var pp = keyString.indexOf('/', p);
-			if (pp < 0) pp = keyString.length;
-			p += u_handle.length + 1;
-			var encryptedKey = keyString.substr(p, pp - p);
-			// we have found a suitable key: decrypt!
-			if (encryptedKey.length < 46) {
-				// short keys: AES
-				var k = base64_to_a32(encryptedKey);
-				// check for permitted key lengths (4 == folder, 8 == file)
-				if (k.length == 4 || k.length == 8) {
-					count++;
-				}
-			}
-		};
-		return count;
 	}
 
 	if (((typeof json == 'number') && (json < 0)) && (pfid)) {
@@ -787,3 +774,5 @@ function rt_startdownload() {
 	plugin.pluginObject.encrypt(0, a32_to_byteStringArray(u_k), a32_to_byteStringArray(real_ul_key), encryptCallback, onPluginError);
 
 }
+
+redefine_crypto();

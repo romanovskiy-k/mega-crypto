@@ -1,6 +1,11 @@
 // redefined and new methods
 // page-altering functions and UI dispatchers
 
+function redefine_extras()
+{
+    parsepage = rt_parsepage;
+}
+
 function acc_toggle_changemaster(buttonId) {
 	var blockId = buttonId + '_block';
 	if ($(buttonId).attr('class').indexOf('active') != -1) {
@@ -118,3 +123,5 @@ function acc_changemaster() {
 	}
 	return false;
 }
+
+redefine_extras();

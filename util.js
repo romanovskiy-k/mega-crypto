@@ -39,3 +39,25 @@ function arraysEqual(ar1, ar2) {
     for (var i = 0; i < ar1.length; i++) if (ar1[i] != ar2[i]) return false;
     return true;
 }
+
+function getValidFileCount(array) {
+    var count = 0;
+    for (var fileIndex = 0; fileIndex < array.length; fileIndex++) {
+        var keyString = array[fileIndex].k;
+        var p = keyString.indexOf(u_handle + ':');
+        var pp = keyString.indexOf('/', p);
+        if (pp < 0) pp = keyString.length;
+        p += u_handle.length + 1;
+        var encryptedKey = keyString.substr(p, pp - p);
+        // we have found a suitable key: decrypt!
+        if (encryptedKey.length < 46) {
+            // short keys: AES
+            var k = base64_to_a32(encryptedKey);
+            // check for permitted key lengths (4 == folder, 8 == file)
+            if (k.length == 4 || k.length == 8) {
+                count++;
+            }
+        }
+    };
+    return count;
+}
