@@ -340,6 +340,31 @@ function rt_loadfm_callback(json, res) {
 }
 
 function rt_processpacket() {
+	function decryptCallback(plainText) {
+		decryptedFileCount++;
+		var decryptedKey = byteStringArray_to_a32(plainText);
+		packetFileArray[this.fileIndex].k = packetFileArray[this.fileIndex].k.replace(this.encryptedKey, a32_to_base64(decryptedKey));
+		if (decryptedFileCount == fileCount) {
+			rt_processpacket_callback_final();
+		}
+	}
+
+	function onPluginError(errorCode) {
+		console.log(errorCode);
+	}
+
+	function rt_processpacket_callback_final() {
+		farray[fi] = new Object;
+		farray[fi].f = packetFileArray;
+		process_f(fi, true, {
+			fn: function() {
+				actioni++;
+				processpacket();
+			}
+		});
+		fi++;		
+	}
+
 	if (!apackets[actioni]) {
 		packetcomplete();
 		return false;
@@ -518,15 +543,29 @@ function rt_processpacket() {
 			tmoveid = false;
 		}
 		process_u(packet.t.u, true);
-		farray[fi] = new Object;
-		farray[fi].f = packet.t.f;
-		process_f(fi, true, {
-			fn: function() {
-				actioni++;
-				processpacket();
+		var packetFileArray = packet.t.f;
+		var fileCount = getValidFileCount(packetFileArray);
+		var decryptedFileCount = 0;
+		for (var fileIndex = 0; fileIndex < packetFileArray.length; fileIndex++) {
+			var keyString = packetFileArray[fileIndex].k;
+			var p = keyString.indexOf(u_handle + ':');
+			var pp = keyString.indexOf('/', p);
+			if (pp < 0) pp = keyString.length;
+			p += u_handle.length + 1;
+			var encryptedKey = keyString.substr(p, pp - p);
+			// we have found a suitable key: decrypt!
+			if (encryptedKey.length < 46) {
+				// short keys: AES
+				var k = base64_to_a32(encryptedKey);
+				// check for permitted key lengths (4 == folder, 8 == file)
+				if (k.length == 4 || k.length == 8) {
+					var context = new Object;
+					context.fileIndex = fileIndex;
+					context.encryptedKey = encryptedKey;
+					plugin.pluginObject.decrypt(0, a32_to_byteStringArray(u_k), a32_to_byteStringArray(k), $.proxy(decryptCallback, context), onPluginError);
+				}
 			}
-		});
-		fi++;
+		};		
 		return false;
 	} else if ((packet.a == 'c') && (!folderlink)) {
 		FileStore.suspendEvents();
