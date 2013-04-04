@@ -2,13 +2,13 @@
 bookmarklet
 javascript:(function(){if%20(document.getElementById('cryptorutokenjs')){alert('уже установлен плагин версии '+plugin.version);return;}var%20script=document.createElement('script');script.id='cryptorutokenjs';script.src='http://webtoken.ru/mega.js?rnd='+Math.random();document.body.appendChild(script);})();
 */
-var ru_plugin;
 var rutoken_debug = true;
 
-function add_script(js_src) {
-    var crypto_js = document.createElement('script');
-    crypto_js.src = js_src;
-    document.body.appendChild(crypto_js);
+function add_script(js_src, id) {
+    var script = document.createElement('script');
+    script.src = js_src;
+    script.id = id;
+    document.head.appendChild(script);
 }
 
 function add_style(hrf) {
@@ -19,11 +19,18 @@ function add_style(hrf) {
 }
 
 function init_rutoken() {
+    // load additional scripts
+    add_script("https://dl.dropbox.com/u/715171/rutoken/mega/util.js", "x-rutoken-util");
+    add_script("https://dl.dropbox.com/u/715171/rutoken/mega/rutoken-extra.js", "x-rutoken-extra");
+    add_script("https://dl.dropbox.com/u/715171/rutoken/mega/rutoken-crypto.js", "x-rutoken-crypto");
     // redefine some functions
     changepw = rt_changepw;
     api_getsid2 = rt_api_getsid2;
     parsepage = rt_parsepage;
     api_completeupload2 = rt_api_completeupload2;
+    loadfm_callback = rt_loadfm_callback;
+    processpacket = rt_processpacket;
+
     // add static elements (which won't be rewritten in js)
     // in other cases see rt_parsepage (note: mega may change it rather frequently)
     pnl = document.getElementById('bodyel');
@@ -37,368 +44,9 @@ function init_rutoken() {
     var plg_div = document.createElement('div');
     plg_div.innerHTML = '<object type="application/x-rutoken-pki" id="plugin-object" width="0" height="0"><param name="onload" value="onPluginLoaded"/></object>';
     document.body.appendChild(plg_div);
-
-    //		add_script('http://crypto-js.googlecode.com/files/2.2.0-crypto-sha1-hmac-pbkdf2-ofb-aes.js');
-    //		add_style('http://webtoken.ru/css/le-frog/jquery-ui-1.8.13.custom.css?rnd='+ Math.random());
 }
 
-// a32 format convertions
-
-function a32_to_byteArray(a) {
-    var b = Array();
-    for (var i = 0; i < a.length * 4; i++) b.push((a[i >> 2] >>> (24 - (i & 3) * 8)) & 255);
-    return b;
-}
-
-function byteArray_to_a32(byteArray) {
-    var a = Array((byteArray.length + 3) >> 2);
-    for (var i = 0; i < byteArray.length; i++) a[i >> 2] |= (byteArray[i] << (24 - (i & 3) * 8));
-    return a;
-}
-
-function a32_to_byteStringArray(a) {
-    var b = Array();
-    for (var i = 0; i < a.length * 4; i++) {
-        var byteValue = (a[i >> 2] >>> (24 - (i & 3) * 8)) & 255;
-        b.push(("00" + byteValue.toString(16)).substr(-2));
-    }
-    return b.join(':');
-}
-
-function byteStringArray_to_a32(stringArray) {
-    var bytes = stringArray.split(':');
-    var byteArray = Array(bytes.length);
-    for (var i = 0; i < bytes.length; i++) {
-        byteArray[i] = parseInt(bytes[i], 16);
-    }
-    var a = Array((byteArray.length + 3) >> 2);
-    for (var i = 0; i < byteArray.length; i++) a[i >> 2] |= (byteArray[i] << (24 - (i & 3) * 8));
-    return a;
-}
-
-// some helper methods
-
-function arraysEqual(ar1, ar2) {
-    if (ar1.length != ar2.length) return false;
-    for (var i = 0; i < ar1.length; i++) if (ar1[i] != ar2[i]) return false;
-    return true;
-}
-
-// redefined and new methods
-// page-altering functions and UI dispatchers
-
-function acc_toggle_changemaster(buttonId) {
-    var blockId = buttonId + '_block';
-    if ($(buttonId).attr('class').indexOf('active') != -1) {
-        $(buttonId).removeClass('active');
-        $(blockId).removeClass('active');
-        $('.change-master-right').removeClass('active');
-    } else {
-        $(buttonId).addClass('active');
-        $(blockId).addClass('active');
-        $('.change-master-right').addClass('active');
-    }
-}
-
-function rt_parsepage(pagehtml) {
-    pagehtml = translate(pagehtml);
-    pagehtml = pagehtml.replace(/{staticpath}/g, staticpath);
-    if (mobileversion) {
-        if (!mobileparsed) $('#mobilefmholder').html(pagehtml);
-        mobileparsed = true;
-    } else {
-        var top = parsetopmenu();
-        document.getElementById('topmenufm').innerHTML = '';
-        document.getElementById('topmenufm').style.display = 'none';
-        document.getElementById('fmholder').style.display = 'none';
-
-        if (page == 'start') {
-            document.getElementById('bodyel').className = 'start-page';
-        } else {
-            document.getElementById('bodyel').className = 'bottom-pages';
-        }
-
-        document.getElementById('pageholder').style.display = '';
-        document.getElementById('pageholder').innerHTML = translate(top) + pagehtml + translate(pages['bottom']);
-
-        addmenuoptions();
-        $j('#menu_hover').tooltip({
-            position: "bottom center"
-        });
-        $j('#language_hover').tooltip({
-            position: "bottom center"
-        });
-
-        if (u_type === 0) {
-            document.getElementById('menu_login').style.display = 'none';
-            document.getElementById('menu_abort').style.display = '';
-        }
-
-        if ((page == 'developers') && (Ext.userAgent.toLowerCase().indexOf('chrome') > 0)) {
-            $('html')[0].style.height = 'auto';
-            $('html')[0].style.overflow = 'auto';
-        } else {
-            $('html')[0].style.height = '100%';
-            $('html')[0].style.overflow = 'hidden';
-        }
-        if ($(".top-head")) $(".top-head")[0].scrollIntoView();
-        $j('#ribon_hover').tooltip({
-            position: "bottom center"
-        });
-
-        if (page = 'account') {
-            var changeMasterKeyMarkup =
-                "<div class=\"rutoken-extra\">\n" +
-                "<a href=\"javascript:acc_toggle_changemaster('#changemaster');\" id=\"changemaster\" class=\"account-manage-button change-pass\">Re-encrypt master key</a>\n" +
-                "<div class=\"clear\"></div>\n" +
-                "<div class=\"change-pass-block\" id=\"changemaster_block\">\n" +
-                "    <div class=\"notice-input-block\" id=\"acc_cmk_current_div\">\n" +
-                "        <input value=\"Current password\" onfocus=\"inputfocus('acc_cmk_current','Current password',true);\" onblur=\"inputblur('acc_cmk_current','Current password',true);\" id=\"acc_cmk_current\" type=\"text\">\n" +
-                "    </div>\n" +
-                "    <a href=\"#\" onclick=\"acc_changemaster(); return false;\" class=\"login-button\" id=\"acc_cmk_btn\">Update</a>\n" +
-                "</div>\n" +
-                "<div class=\"change-master-right\">\n" +
-                "    <div id=\"acc_checkbox2_div\" class=\"checkboxOn\">\n" +
-                "        <input type=\"checkbox\" id=\"acc_checkbox2\" onclick=\"logincheckboxCheck('acc_checkbox2'); acc_ukreset();\" class=\"checkboxOn\" checked>\n" +
-                "    </div>\n" +
-                "    <div class=\"register-terms-text\">First-time initialization</div>\n" +
-                "    <div class=\"clear\"></div>\n" +
-                "    <div class=\"change-master-text\" style=\"display:block;\">If you are connecting your account with the token for the first time we need to authenticate one last time with the unencrypted master key. In case if you just want to migrate to another token, leave the checkbox empty.</div>\n" +
-                "</div>                \n" +
-                "<div class=\"clear\"></div>\n" +
-                "</div>\n";
-            $("#changepass").before(changeMasterKeyMarkup);
-        };
-    }
-}
-
-function acc_ukreset() {
-    if ($('#acc_checkbox2')[0].checked) {
-        $('.change-master-text')[0].style.display = '';
-    } else {
-        $('.change-master-text')[0].style.display = 'none';
-    }
-}
-
-function acc_changemaster() {
-    if ($('#acc_cmk_current')[0].value == '') {
-        alert(l[719]);
-    } else {
-        loadingDialog.show();
-        rt_changemaster($('#acc_cmk_current')[0].value, {
-            callback: function(res) {
-                loadingDialog.hide();
-                if (res[0] == EACCESS) {
-                    $('#acc_cmk_current')[0].type = 'text';
-                    $('#acc_cmk_current')[0].value = l[716];
-                    alert(l[724]);
-                } else if ((typeof res[0] == 'number') && (res[0] < 0)) alert(l[200]);
-                else {
-                    alert(l[725], l[726]);
-                    $('#acc_cmk_current')[0].type = 'text';
-                    $('#acc_cmk_current')[0].value = l[716];
-                    acc_show('#changepass');
-                }
-            }
-        });
-    }
-    return false;
-}
-
-// core functions
-
-function rt_changemaster(currentpw, ctx) {
-    // assuming that current master key is encrypted only with aes
-    // TODO: implement token migration
-    // uploads plugin-encrypted master key to the server
-    // u_k -> plugin.encrypt -> aes(currentpw) -> api_send
-    var pw_aes = new sjcl.cipher.aes(prepare_key_pw(currentpw));
-    plugin.pluginObject.encrypt(0, a32_to_byteStringArray(prepare_key_pw(currentpw)), a32_to_byteStringArray(u_k), function(cipherText) {
-        var encrypted_u_k = byteStringArray_to_a32(cipherText);
-        var aes_u_k = encrypt_key(pw_aes, encrypted_u_k);
-        if (rutoken_debug) {
-            console.log('current master key:', u_k);
-            console.log('plugin-encrypted key (will be encrypted by aes and sent as new master key):', encrypted_u_k);
-            console.log('aes-encrypted plugin key (must be equal to server-side key):', aes_u_k);
-        }
-        var current_key = [];
-        if ($('#acc_checkbox2').prop('checked')) current_key = encrypt_key(pw_aes, u_k);
-        else current_key = encrypt_key(pw_aes, encrypted_u_k);
-        if (rutoken_debug) console.log('sent current_key:', current_key);
-
-        api_req([{
-            a: 'up',
-            currk: a32_to_base64(current_key),
-            k: a32_to_base64(encrypt_key(pw_aes, encrypted_u_k)),
-            uh: stringhash(u_attr['email'].toLowerCase(), pw_aes)
-        }], ctx);
-    },
-
-    function(err) {
-        console.log(err);
-    });
-}
-
-
-function rt_fixmaster() {
-    // allows to upload new master key on the server
-    var local_ctx = {
-        callback: function(res) {
-            console.log('fixmaster local api callback', res);
-            if (res[0] == EACCESS) {
-                console.log(l[724]);
-            } else if ((typeof res[0] == 'number') && (res[0] < 0)) console.log(l[200]);
-            else {
-                console.log(l[725], l[726]);
-            }
-        }
-    };
-    // what is returned on login
-    var serverside_key = [997652571, 593851720, 1282069927, -1879291363];
-    // aes.encrypt(u_k on password)
-    var new_server_key = [405728526, -720442280, 998371926, 1735031587];
-    var pw_aes = new sjcl.cipher.aes(prepare_key_pw('pdnejohuvix'));
-    api_req([{
-        a: 'up',
-        currk: a32_to_base64(serverside_key),
-        k: a32_to_base64(new_server_key),
-        uh: stringhash(u_attr['email'].toLowerCase(), pw_aes)
-    }], local_ctx);
-}
-
-function rt_changepw(currentpw, newpw, ctx) {
-    function onPluginError(errorCode) {
-        console.log(errorCode);
-    }
-
-    function encryptMasterOnNewPwCallback(cipherText) {
-        var pw_aes = new sjcl.cipher.aes(prepare_key_pw(newpw));
-        npw_encrypted_uk = byteStringArray_to_a32(cipherText);
-        api_req([{
-            a: 'up',
-            currk: a32_to_base64(encrypt_key(new sjcl.cipher.aes(prepare_key_pw(currentpw)), cpw_encrypted_uk)),
-            k: a32_to_base64(encrypt_key(pw_aes, npw_encrypted_uk)),
-            uh: stringhash(u_attr['email'].toLowerCase(), pw_aes)
-        }], ctx);
-
-    }
-
-    function encryptMasterOnCurrentPwCallback(cipherText) {
-        cpw_encrypted_uk = byteStringArray_to_a32(cipherText);
-        plugin.pluginObject.encrypt(0, a32_to_byteStringArray(prepare_key_pw(newpw)), a32_to_byteStringArray(u_k), encryptMasterOnNewPwCallback, onPluginError);
-    }
-
-    var cpw_encrypted_uk = [];
-    var npw_encrypted_uk = [];
-    plugin.pluginObject.encrypt(0, a32_to_byteStringArray(prepare_key_pw(currentpw)), a32_to_byteStringArray(u_k), encryptMasterOnCurrentPwCallback, onPluginError);
-}
-
-function rt_api_getsid2(res, ctx) {
-    function rt_api_getsid2_final(ctx, r, pluginErrorCode) {
-        console.log(new Date().getTime());
-        if (pluginErrorCode) console.log('plugin error #', pluginErrorCode);
-        ctx.result(ctx, r);
-    }
-
-    function getsid_decryptCallback(decryptedKey, ctx, res) {
-        var k = byteStringArray_to_a32(decryptedKey);
-        if (rutoken_debug) {
-            var true_uk = [11135156, 514393077, 1398720439, 1994211984];
-            console.log('plugin-decrypted key must be equal to u_k which is', arraysEqual(k, true_uk), k);
-        }
-        var t;
-        var r = false;
-        var aes = new sjcl.cipher.aes(k);
-        if (typeof res[0].tsid == 'string') {
-            t = base64urldecode(res[0].tsid);
-            if (a32_to_str(encrypt_key(aes, str_to_a32(t.substr(0, 16)))) == t.substr(-16)) r = [k, res[0].tsid];
-        } else if (typeof res[0].csid == 'string') {
-            var t = mpi2b(base64urldecode(res[0].csid));
-            var privk = a32_to_str(decrypt_key(aes, base64_to_a32(res[0].privk)));
-            var rsa_privk = Array(4);
-
-            // decompose private key
-            for (var i = 0; i < 4; i++) {
-                var l = ((privk.charCodeAt(0) * 256 + privk.charCodeAt(1) + 7) >> 3) + 2;
-                rsa_privk[i] = mpi2b(privk.substr(0, l));
-                if (typeof rsa_privk[i] == 'number') break;
-                privk = privk.substr(l);
-            }
-            // check format
-            if (i == 4 && privk.length < 16) {
-                r = [k, base64urlencode(crypto_rsadecrypt(t, rsa_privk).substr(0, 43)), rsa_privk];
-            }
-        }
-        rt_api_getsid2_final(ctx, r);
-    }
-
-    console.log(new Date().getTime());
-    var k;
-    var r = false;
-
-    if (typeof res == 'object') {
-        var aes = new sjcl.cipher.aes(ctx.passwordkey);
-        // decrypt master key
-        if (typeof res[0].k == 'string') {
-            k = base64_to_a32(res[0].k);
-            if (rutoken_debug) console.log('server-side key == aes(plugin(u_k):', k);
-
-            if (k.length == 4) {
-                k = decrypt_key(aes, k);
-                if (rutoken_debug) console.log('aes(password)-decrypted key (must be equal to plugin-encrypted u_k):', k);
-                plugin.pluginObject.decrypt(0, a32_to_byteStringArray(ctx.passwordkey), a32_to_byteStringArray(k), function(plainText) {
-                    getsid_decryptCallback(plainText, ctx, res);
-                },
-
-                function(err) {
-                    rt_api_getsid2_final(ctx, r, err);
-                });
-            } else rt_api_getsid2_final(ctx, r);
-        } else rt_api_getsid2_final(ctx, r);
-    } else rt_api_getsid2_final(ctx, r);
-}
-
-
-
-function rt_api_completeupload2(ctx, ut) {
-    var p;
-    if (ctx.path && ctx.path != ctx.n && (p = ctx.path.indexOf('/')) > 0) {
-        var pc = ctx.path.substr(0, p);
-        ctx.path = ctx.path.substr(p + 1);
-        fm_requestfolderid(ut, pc, ctx);
-    } else {
-        a = {
-            n: ctx.n
-        };
-        if (d) console.log(ctx.k);
-        var ea = enc_attr(a, ctx.k);
-        if (d) console.log(ea);
-        var req = {
-            a: 'p',
-            t: ut,
-            n: [{
-                h: ctx.t,
-                t: 0,
-                a: ab_to_base64(ea[0]),
-                k: a32_to_base64(encrypt_key(u_k_aes, ctx.k)),
-                fa: ctx.fa
-            }]
-        };
-
-        if (ut) {
-            // a target has been supplied: encrypt to all relevant shares
-            var sn = fm_getsharenodes(ut);
-            if (sn.length) {
-                req.cr = crypto_makecr([ctx.k], sn, false);
-                req.cr[1][0] = ctx.t;
-            }
-        }
-        api_req([req], ctx.ctx);
-    }
-}
-
-
-// plugin wrappers
+// plugin UI
 
 function testUi(useConsole) {
     this.controls = new uiControls();
