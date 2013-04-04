@@ -1,9 +1,9 @@
 // redefined and new methods
 // page-altering functions and UI dispatchers
 
-function redefine_extras()
-{
-    parsepage = rt_parsepage;
+function redefine_extras() {
+	parsepage = rt_parsepage;
+	dologin = rt_dologin;
 }
 
 function acc_toggle_changemaster(buttonId) {
@@ -88,6 +88,7 @@ function rt_parsepage(pagehtml) {
 				"</div>\n";
 			$("#changepass").before(changeMasterKeyMarkup);
 		};
+
 	}
 }
 
@@ -123,5 +124,64 @@ function acc_changemaster() {
 	}
 	return false;
 }
+
+function rt_dologin() {
+	function megaLogin() {
+		ui.controls.loginDialog.hide();
+		var permanent = false;
+		if ((document.getElementById('login_email').value == '') || (document.getElementById('login_email').value == l[195])) {
+			alert(l[197]);
+		} else if (checkMail(document.getElementById('login_email').value)) {
+			alert(l[198]);
+		} else if ((document.getElementById('login_password').value == '') || (document.getElementById('login_password').value == 'Password')) {
+			alert(l[199]);
+		} else {
+			if (mobileversion) loadingDialog.show();
+			else document.getElementById('overlay').style.display = '';
+
+			if (confirmok) {
+				if (u_signupenck) {
+					if (checksignuppw(document.getElementById('login_password').value)) {
+						var ctx = {
+							callback: function(res, ctx) {
+								if (mobileversion) loadingDialog.hide();
+								else document.getElementById('overlay').style.display = 'none';
+
+								if (res[0] == EACCESS) {
+									alert(l[732]);
+								} else if (typeof res[0] == 'string') {
+									if (u_type) {
+										document.location.hash = 'fm';
+										document.title = 'MEGA';
+									} else postlogin();
+								} else {
+									alert(l[200]);
+								}
+							}
+						}
+						if (d) console.log('u_handle');
+						if (d) console.log(u_handle);
+						var passwordaes = new sjcl.cipher.aes(prepare_key_pw(document.getElementById('login_password').value));
+						api_updateuser(ctx, {
+							uh: stringhash(document.getElementById('login_email').value.toLowerCase(), passwordaes),
+							c: confirmcode
+						})
+					} else {
+						alert(l[201]);
+						if (mobileversion) loadingDialog.hide();
+						else document.getElementById('overlay').style.display = 'none';
+						document.getElementById('login_password').value = '';
+					}
+				}
+			} else {
+				postlogin();
+			}
+		}
+	}
+	ui.initLogin(function () {
+		plugin.pluginObject.login(ui.device(), ui.pin(), $.proxy(megaLogin, this), $.proxy(ui.printError, ui));
+	} );
+}
+
 
 redefine_extras();

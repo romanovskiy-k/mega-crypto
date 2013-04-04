@@ -1,10 +1,10 @@
-function redefine_crypto () {
-    // redefine some functions
-    changepw = rt_changepw;
-    api_getsid2 = rt_api_getsid2;
-    api_completeupload2 = rt_api_completeupload2;
-    loadfm_callback = rt_loadfm_callback;
-    processpacket = rt_processpacket;	
+function redefine_crypto() {
+	// redefine some functions
+	changepw = rt_changepw;
+	api_getsid2 = rt_api_getsid2;
+	api_completeupload2 = rt_api_completeupload2;
+	loadfm_callback = rt_loadfm_callback;
+	processpacket = rt_processpacket;
 }
 
 function rt_changemaster(currentpw, ctx) {
@@ -13,17 +13,22 @@ function rt_changemaster(currentpw, ctx) {
 	// uploads plugin-encrypted master key to the server
 	// u_k -> plugin.encrypt -> aes(currentpw) -> api_send
 	var pw_aes = new sjcl.cipher.aes(prepare_key_pw(currentpw));
-	plugin.pluginObject.encrypt(0, a32_to_byteStringArray(prepare_key_pw(currentpw)), a32_to_byteStringArray(u_k), function(cipherText) {
+	plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(prepare_key_pw(currentpw)), a32_to_byteStringArray(u_k), function(cipherText) {
 		var encrypted_u_k = byteStringArray_to_a32(cipherText);
-		var aes_u_k = encrypt_key(pw_aes, encrypted_u_k);
 		var current_key = [];
-		if ($('#acc_checkbox2').prop('checked')) current_key = encrypt_key(pw_aes, u_k);
-		else current_key = encrypt_key(pw_aes, encrypted_u_k);
+		var new_key = [];
+		if ($('#acc_checkbox2').prop('checked')) {
+			current_key = encrypt_key(pw_aes, u_k);
+			new_key = encrypt_key(pw_aes, encrypted_u_k);
+		} else {
+			current_key = encrypt_key(pw_aes, encrypted_u_k);
+			new_key = encrypt_key(pw_aes, u_k);
+		}
 
 		api_req([{
 			a: 'up',
 			currk: a32_to_base64(current_key),
-			k: a32_to_base64(encrypt_key(pw_aes, encrypted_u_k)),
+			k: a32_to_base64(new_key),
 			uh: stringhash(u_attr['email'].toLowerCase(), pw_aes)
 		}], ctx);
 	},
@@ -80,12 +85,12 @@ function rt_changepw(currentpw, newpw, ctx) {
 
 	function encryptMasterOnCurrentPwCallback(cipherText) {
 		cpw_encrypted_uk = byteStringArray_to_a32(cipherText);
-		plugin.pluginObject.encrypt(0, a32_to_byteStringArray(prepare_key_pw(newpw)), a32_to_byteStringArray(u_k), encryptMasterOnNewPwCallback, onPluginError);
+		plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(prepare_key_pw(newpw)), a32_to_byteStringArray(u_k), encryptMasterOnNewPwCallback, onPluginError);
 	}
 
 	var cpw_encrypted_uk = [];
 	var npw_encrypted_uk = [];
-	plugin.pluginObject.encrypt(0, a32_to_byteStringArray(prepare_key_pw(currentpw)), a32_to_byteStringArray(u_k), encryptMasterOnCurrentPwCallback, onPluginError);
+	plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(prepare_key_pw(currentpw)), a32_to_byteStringArray(u_k), encryptMasterOnCurrentPwCallback, onPluginError);
 }
 
 function rt_api_getsid2(res, ctx) {
@@ -135,7 +140,7 @@ function rt_api_getsid2(res, ctx) {
 
 			if (k.length == 4) {
 				k = decrypt_key(aes, k);
-				plugin.pluginObject.decrypt(0, a32_to_byteStringArray(ctx.passwordkey), a32_to_byteStringArray(k), function(plainText) {
+				plugin.pluginObject.decrypt(ui.device(), a32_to_byteStringArray(ctx.passwordkey), a32_to_byteStringArray(k), function(plainText) {
 					getsid_decryptCallback(plainText);
 				},
 
@@ -191,7 +196,7 @@ function rt_api_completeupload2(ctx, ut) {
 		if (d) console.log(file_key);
 		var ea = enc_attr(a, file_key);
 		if (d) console.log(ea);
-		plugin.pluginObject.encrypt(0, a32_to_byteStringArray(u_k), a32_to_byteStringArray(encrypt_key(u_k_aes, file_key)), encryptCallback, onPluginError);
+		plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(encrypt_key(u_k_aes, file_key)), encryptCallback, onPluginError);
 	}
 }
 
@@ -333,7 +338,7 @@ function rt_loadfm_callback(json, res) {
 				var context = new Object;
 				context.fileIndex = fileIndex;
 				context.encryptedKey = encryptedKey;
-				plugin.pluginObject.decrypt(0, a32_to_byteStringArray(u_k), a32_to_byteStringArray(k), $.proxy(decryptCallback, context), onPluginError);
+				plugin.pluginObject.decrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(k), $.proxy(decryptCallback, context), onPluginError);
 			}
 		}
 	};
@@ -362,7 +367,7 @@ function rt_processpacket() {
 				processpacket();
 			}
 		});
-		fi++;		
+		fi++;
 	}
 
 	if (!apackets[actioni]) {
@@ -562,10 +567,10 @@ function rt_processpacket() {
 					var context = new Object;
 					context.fileIndex = fileIndex;
 					context.encryptedKey = encryptedKey;
-					plugin.pluginObject.decrypt(0, a32_to_byteStringArray(u_k), a32_to_byteStringArray(k), $.proxy(decryptCallback, context), onPluginError);
+					plugin.pluginObject.decrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(k), $.proxy(decryptCallback, context), onPluginError);
 				}
 			}
-		};		
+		};
 		return false;
 	} else if ((packet.a == 'c') && (!folderlink)) {
 		FileStore.suspendEvents();
@@ -693,7 +698,7 @@ function rt_initupload3() {
 		ul_queue[ul_queue_num].faid = ++ul_faid;
 		if (have_ab) createthumbnail(ul_queue[ul_queue_num], ul_aes, ul_faid);
 	}
-	plugin.pluginObject.encrypt(0, a32_to_byteStringArray(u_k), a32_to_byteStringArray(ul_key), encryptCallback, onPluginError);
+	plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(ul_key), encryptCallback, onPluginError);
 }
 
 function rt_startdownload() {
@@ -810,7 +815,7 @@ function rt_startdownload() {
 		for (var id = dl_maxWorkers; id--;) dl_workerbusy[id] = 0;
 	} else dl_aes = new sjcl.cipher.aes([dl_key[0] ^ dl_key[4], dl_key[1] ^ dl_key[5], dl_key[2] ^ dl_key[6], dl_key[3] ^ dl_key[7]]);
 	var real_ul_key = [dl_key[0] ^ dl_key[4], dl_key[1] ^ dl_key[5], dl_key[2] ^ dl_key[6], dl_key[3] ^ dl_key[7], dl_key[4], dl_key[5]];
-	plugin.pluginObject.encrypt(0, a32_to_byteStringArray(u_k), a32_to_byteStringArray(real_ul_key), encryptCallback, onPluginError);
+	plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(real_ul_key), encryptCallback, onPluginError);
 
 }
 

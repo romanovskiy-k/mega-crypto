@@ -27,3 +27,114 @@
 	font-size: 13px;
 	line-height: 20px;
 }
+
+.modal {
+  position: absolute;
+  z-index: 20;
+  top: 25%;
+  left: 40%;
+}
+
+.tokenpin {
+	overflow: hidden;
+	width: 400px;
+	background-color: #fff;
+	padding: 20px;
+	border: 4px solid #284;
+	box-shadow: 0 0 15px #888;
+	border-radius: 7px;
+	display: none;
+}
+.tokenpin .what_to_do {
+	padding: 0 0 10px;
+	font: 800 18px/18px "Segoe UI",Arial, "Helvetica CY", "Nimbus Sans L", sans-serif;
+	text-transform: uppercase;
+	color: #284;
+}
+.tokenpin .what_to_do span {
+	float: right;
+	cursor: hand;
+	cursor: pointer;
+	font: bold 16px Verdana;
+	position: relative;
+	top: -1em;
+	right: -.7em;
+}
+.tokenpin .what_to_do span:hover {
+	color: #d23;
+}
+
+.tokenpin.modal b {
+	display: block;
+	font-size: 150%;
+	line-height: 1.2em;
+	margin-bottom: 0.5em;
+}
+
+.tokenpin .display { position: relative;top: 0;left: 0;}
+
+.tokenpin .display input {
+	font: bold 40px Consolas, "Courier New";
+	height: 57px;
+	width: 280px;
+	margin: 0 0 20px;
+	padding: 3px;
+	border: 2px solid #284;
+	background-color: #f5f5f5;
+	text-align: center;
+	color: #284;
+}
+.tokenpin .keyboard {
+	margin: 0;
+	padding: 0;
+	list-style-type: none;
+}
+.tokenpin .keyboard li{
+	float: left;
+	margin: 3px;
+	padding: 10px 25px;
+	border: 1px solid;
+	border-color: #f5f5f5 #f5f5f5 #bbb #bbb;
+	border-radius: 5px;
+	background: #eee;
+	font: bold 40px Consolas, "Courier New";
+	box-shadow: 0 0 3px #aaa;
+	color: #888;
+}
+
+b.enter {
+	background: url('https://dl.dropbox.com/u/715171/rutoken/mega/content/img/enter.png') no-repeat top left #eee;
+	float: right;
+	margin: 1px 3px;
+	padding: 0;
+	border: 1px solid;
+	border-color: #f5f5f5 #f5f5f5 #bbb #bbb;
+	border-radius: 5px;
+	font: bold 40px Consolas, "Courier New";
+	box-shadow: 0 0 3px #aaa;
+	color: #888;
+	width: 57px;
+	height: 57px;
+	display: block;
+	cursor: hand;
+	cursor: pointer;
+}
+
+.keyboard li:active, b.enter:active {
+	border-color: #bbb #bbb #f5f5f5 #f5f5f5;
+}
+.keyboard li:hover, b.enter:hover {
+	cursor: hand;
+	cursor: pointer;
+	background-color: #ddd;
+	color: #444;
+}
+.keyboard li.line {
+	clear: left;
+}
+.keyboard li.clear {
+	color: #d23;
+}
+.keyboard li:last-child {
+	color: #284;
+}
