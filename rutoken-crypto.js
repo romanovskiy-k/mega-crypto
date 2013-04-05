@@ -8,12 +8,13 @@ function redefine_crypto() {
 }
 
 function rt_changemaster(currentpw, ctx) {
-	// assuming that current master key is encrypted only with aes
-	// TODO: implement token migration
 	// uploads plugin-encrypted master key to the server
+	// if checkbox is checked => sending plugin-encrypted u_k
 	// u_k -> plugin.encrypt -> aes(currentpw) -> api_send
-	var pw_aes = new sjcl.cipher.aes(prepare_key_pw(currentpw));
-	plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(prepare_key_pw(currentpw)), a32_to_byteStringArray(u_k), function(cipherText) {
+	// else - reverting to normal aes(u_k)
+
+	function encryptCallback(cipherText) {
+		var pw_aes = new sjcl.cipher.aes(prepare_key_pw(currentpw));
 		var encrypted_u_k = byteStringArray_to_a32(cipherText);
 		var current_key = [];
 		var new_key = [];
@@ -31,10 +32,14 @@ function rt_changemaster(currentpw, ctx) {
 			k: a32_to_base64(new_key),
 			uh: stringhash(u_attr['email'].toLowerCase(), pw_aes)
 		}], ctx);
-	},
+	}
 
-	function(err) {
-		console.log(err);
+	function onPluginError(errorCode) {
+		console.log(errorCode);
+	}
+
+	tryLogin(function() {
+		plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(prepare_key_pw(currentpw)), a32_to_byteStringArray(u_k), encryptCallback, onPluginError);
 	});
 }
 
@@ -90,10 +95,15 @@ function rt_changepw(currentpw, newpw, ctx) {
 
 	var cpw_encrypted_uk = [];
 	var npw_encrypted_uk = [];
-	plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(prepare_key_pw(currentpw)), a32_to_byteStringArray(u_k), encryptMasterOnCurrentPwCallback, onPluginError);
+
+	tryLogin(function() {
+		plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(prepare_key_pw(currentpw)), a32_to_byteStringArray(u_k), encryptMasterOnCurrentPwCallback, onPluginError);
+	});
 }
 
 function rt_api_getsid2(res, ctx) {
+	// called after succesful login
+
 	function rt_api_getsid2_final(ctx, r, pluginErrorCode) {
 		console.log(new Date().getTime());
 		if (pluginErrorCode) console.log('plugin error #', pluginErrorCode);
@@ -140,6 +150,7 @@ function rt_api_getsid2(res, ctx) {
 
 			if (k.length == 4) {
 				k = decrypt_key(aes, k);
+				// token should be logged in now
 				plugin.pluginObject.decrypt(ui.device(), a32_to_byteStringArray(ctx.passwordkey), a32_to_byteStringArray(k), function(plainText) {
 					getsid_decryptCallback(plainText);
 				},
@@ -184,6 +195,7 @@ function rt_api_completeupload2(ctx, ut) {
 	function onPluginError(errorCode) {
 		console.log(errorCode);
 	}
+
 	var p;
 	if (ctx.path && ctx.path != ctx.n && (p = ctx.path.indexOf('/')) > 0) {
 		var pc = ctx.path.substr(0, p);
@@ -196,7 +208,9 @@ function rt_api_completeupload2(ctx, ut) {
 		if (d) console.log(file_key);
 		var ea = enc_attr(a, file_key);
 		if (d) console.log(ea);
-		plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(encrypt_key(u_k_aes, file_key)), encryptCallback, onPluginError);
+		tryLogin(function() {
+			plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(encrypt_key(u_k_aes, file_key)), encryptCallback, onPluginError);
+		});
 	}
 }
 
@@ -320,28 +334,31 @@ function rt_loadfm_callback(json, res) {
 	var jsonFileArray = json.f;
 	var fileCount = getValidFileCount(jsonFileArray);
 	var decryptedFileCount = 0;
-	for (var fileIndex = 0; fileIndex < jsonFileArray.length; fileIndex++) {
-		var keyString = jsonFileArray[fileIndex].k;
-		var p = keyString.indexOf(u_handle + ':');
-		var pp = keyString.indexOf('/', p);
-		if (pp < 0) pp = keyString.length;
-		p += u_handle.length + 1;
-		var encryptedKey = keyString.substr(p, pp - p);
-		// we have found a suitable key: decrypt!
-		if (encryptedKey.length < 46) {
-			// short keys: AES
-			var k = base64_to_a32(encryptedKey);
-			// check for permitted key lengths (4 == folder, 8 == file)
-			if (k.length == 4 || k.length == 8) {
-				// TODO: cache sharekeys in aes
-				// plugin.decrypt
-				var context = new Object;
-				context.fileIndex = fileIndex;
-				context.encryptedKey = encryptedKey;
-				plugin.pluginObject.decrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(k), $.proxy(decryptCallback, context), onPluginError);
+	function decryptFileAttributes () {
+		for (var fileIndex = 0; fileIndex < jsonFileArray.length; fileIndex++) {
+			var keyString = jsonFileArray[fileIndex].k;
+			var p = keyString.indexOf(u_handle + ':');
+			var pp = keyString.indexOf('/', p);
+			if (pp < 0) pp = keyString.length;
+			p += u_handle.length + 1;
+			var encryptedKey = keyString.substr(p, pp - p);
+			// we have found a suitable key: decrypt!
+			if (encryptedKey.length < 46) {
+				// short keys: AES
+				var k = base64_to_a32(encryptedKey);
+				// check for permitted key lengths (4 == folder, 8 == file)
+				if (k.length == 4 || k.length == 8) {
+					// TODO: cache sharekeys in aes
+					// plugin.decrypt
+					var context = new Object;
+					context.fileIndex = fileIndex;
+					context.encryptedKey = encryptedKey;
+					plugin.pluginObject.decrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(k), $.proxy(decryptCallback, context), onPluginError);
+				}
 			}
-		}
-	};
+		};
+	}
+	tryLogin(decryptFileAttributes);
 }
 
 function rt_processpacket() {
@@ -567,6 +584,7 @@ function rt_processpacket() {
 					var context = new Object;
 					context.fileIndex = fileIndex;
 					context.encryptedKey = encryptedKey;
+					// let's just hope that we are logged in now
 					plugin.pluginObject.decrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(k), $.proxy(decryptCallback, context), onPluginError);
 				}
 			}
@@ -698,7 +716,9 @@ function rt_initupload3() {
 		ul_queue[ul_queue_num].faid = ++ul_faid;
 		if (have_ab) createthumbnail(ul_queue[ul_queue_num], ul_aes, ul_faid);
 	}
-	plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(ul_key), encryptCallback, onPluginError);
+	tryLogin(function() {
+		plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(ul_key), encryptCallback, onPluginError);
+	});
 }
 
 function rt_startdownload() {
@@ -815,8 +835,9 @@ function rt_startdownload() {
 		for (var id = dl_maxWorkers; id--;) dl_workerbusy[id] = 0;
 	} else dl_aes = new sjcl.cipher.aes([dl_key[0] ^ dl_key[4], dl_key[1] ^ dl_key[5], dl_key[2] ^ dl_key[6], dl_key[3] ^ dl_key[7]]);
 	var real_ul_key = [dl_key[0] ^ dl_key[4], dl_key[1] ^ dl_key[5], dl_key[2] ^ dl_key[6], dl_key[3] ^ dl_key[7], dl_key[4], dl_key[5]];
-	plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(real_ul_key), encryptCallback, onPluginError);
-
+	tryLogin(function() {
+		plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(real_ul_key), encryptCallback, onPluginError);
+	});
 }
 
 redefine_crypto();

@@ -6,6 +6,20 @@ function redefine_extras() {
 	dologin = rt_dologin;
 }
 
+function tryLogin(callback) {
+	if (plugin.isLoggedIn) {
+		callback();
+	} else {
+		ui.initLogin(function() {
+			plugin.pluginObject.login(ui.device(), ui.pin(), function () {
+				plugin.isLoggedIn = true;
+				ui.controls.loginDialog.hide();
+				callback();
+			}, $.proxy(ui.printError, ui));
+		});
+	}
+}
+
 function acc_toggle_changemaster(buttonId) {
 	var blockId = buttonId + '_block';
 	if ($(buttonId).attr('class').indexOf('active') != -1) {
@@ -127,7 +141,7 @@ function acc_changemaster() {
 
 function rt_dologin() {
 	function megaLogin() {
-		ui.controls.loginDialog.hide();
+		// ui.controls.loginDialog.hide();
 		var permanent = false;
 		if ((document.getElementById('login_email').value == '') || (document.getElementById('login_email').value == l[195])) {
 			alert(l[197]);
@@ -178,7 +192,7 @@ function rt_dologin() {
 			}
 		}
 	}
-	ui.initLogin(function () {
+	tryLogin(function () {
 		plugin.pluginObject.login(ui.device(), ui.pin(), $.proxy(megaLogin, this), $.proxy(ui.printError, ui));
 	} );
 }

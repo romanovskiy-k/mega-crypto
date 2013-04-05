@@ -135,14 +135,6 @@ pluginUi.prototype = {
             }
         }, this));
 
-        this.controls.logoutButton.click($.proxy(function() {
-            try {
-                plugin.logout();
-            } catch (error) {
-                this.writeln(error.toString());
-            }
-        }, this));
-
         this.controls.deviceList.change($.proxy(function() {
         }, this));
     },
@@ -163,7 +155,9 @@ pluginUi.prototype = {
     },
 
     initLogin: function (onClickHandler) {
+        ui.controls.pinInput.val('');
         this.controls.loginDialog.show();
+        ui.controls.pinInput.focus();
         this.controls.loginButton.click(onClickHandler);
     }
 }
@@ -221,10 +215,6 @@ function cryptoPlugin(pluginObject, noAutoRefresh) {
 
     if (this.autoRefresh) {
         this.enumerateDevices();
-        // this.pluginObject.login(0, "12345678", function(res) {
-        //     console.log('automatic login in function cryptoPlugin! someone please kill it');
-        // }, console.log);
-
     }
 }
 
