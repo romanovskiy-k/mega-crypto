@@ -3,6 +3,7 @@
 
 function redefine_extras() {
 	parsepage = rt_parsepage;
+	init_page_fm = rt_init_page_fm;
 	dologin = rt_dologin;
 }
 
@@ -11,7 +12,7 @@ function tryLogin(callback) {
 		callback();
 	} else {
 		ui.initLogin(function() {
-			plugin.pluginObject.login(ui.device(), ui.pin(), function () {
+			plugin.pluginObject.login(ui.device(), ui.pin(), function() {
 				plugin.isLoggedIn = true;
 				ui.controls.loginDialog.hide();
 				callback();
@@ -79,30 +80,109 @@ function rt_parsepage(pagehtml) {
 			position: "bottom center"
 		});
 
-		if (page = 'account') {
+		if (page == 'account') {
 			var changeMasterKeyMarkup =
 				"<div class=\"rutoken-extra\">\n" +
-				"<a href=\"javascript:acc_toggle_changemaster('#changemaster');\" id=\"changemaster\" class=\"account-manage-button change-pass\">Re-encrypt master key</a>\n" +
+				"<a href=\"javascript:acc_toggle_changemaster('#changemaster');\" id=\"changemaster\" class=\"account-manage-button change-pass\">Привязка токена</a>\n" +
 				"<div class=\"clear\"></div>\n" +
 				"<div class=\"change-pass-block\" id=\"changemaster_block\">\n" +
 				"    <div class=\"notice-input-block\" id=\"acc_cmk_current_div\">\n" +
 				"        <input value=\"Current password\" onfocus=\"inputfocus('acc_cmk_current','Current password',true);\" onblur=\"inputblur('acc_cmk_current','Current password',true);\" id=\"acc_cmk_current\" type=\"text\">\n" +
 				"    </div>\n" +
-				"    <a href=\"#\" onclick=\"acc_changemaster(); return false;\" class=\"login-button\" id=\"acc_cmk_btn\">Update</a>\n" +
+				"    <a href=\"#\" onclick=\"acc_changemaster(); return false;\" class=\"login-button\" id=\"acc_cmk_btn\">Обновить мастер-ключ</a>\n" +
 				"</div>\n" +
 				"<div class=\"change-master-right\">\n" +
 				"    <div id=\"acc_checkbox2_div\" class=\"checkboxOn\">\n" +
 				"        <input type=\"checkbox\" id=\"acc_checkbox2\" onclick=\"logincheckboxCheck('acc_checkbox2'); acc_ukreset();\" class=\"checkboxOn\" checked>\n" +
 				"    </div>\n" +
-				"    <div class=\"register-terms-text\">First-time initialization</div>\n" +
+				"    <div class=\"register-terms-text\">Привязать токен к учетной записи</div>\n" +
 				"    <div class=\"clear\"></div>\n" +
-				"    <div class=\"change-master-text\" style=\"display:block;\">If you are connecting your account with the token for the first time we need to authenticate one last time with the unencrypted master key. In case if you just want to migrate to another token, leave the checkbox empty.</div>\n" +
+				"    <div class=\"change-master-text\" style=\"display:block;\">Для того, чтобы производить аутентификацию с помощью токена, нам необходимо зашифровать мастер-ключ на токене и отправить его на сервер.</div>\n" +
 				"</div>                \n" +
 				"<div class=\"clear\"></div>\n" +
 				"</div>\n";
 			$("#changepass").before(changeMasterKeyMarkup);
 		};
+	}
+}
 
+function rt_init_page_fm() {
+	if (((fmdirid == 'inbox') || (fmdirid == 'rubbish') || (fmdirid == 'contacts')) && (document.location.hash == '#fm')) {
+		document.location.hash = 'fm' + fmdirid;
+		return false;
+	}
+	if (d) console.log('rt_init_page_fm()');
+	if (d) console.log(extjsloaded);
+	document.getElementById('bodyel').className = '';
+	if (!extjsloaded) {
+		if (d) console.log('Ext not ready.');
+		setTimeout("init_page_fm()", 250);
+	} else {
+		$('html')[0].style.height = '100%';
+		$('html')[0].style.overflow = 'hidden';
+		if (!init_l) {
+			document.getElementById('pageholder').style.display = 'none';
+			document.getElementById('pageholder').innerHTML = '';
+
+			if (init_anoupload) {
+				if (ul_method) {
+					document.getElementById('topmenu').innerHTML = '';
+					document.getElementById('start_button1').style.display = 'none';
+					document.getElementById('start_uploadbutton').style.width = '1px';
+					document.getElementById('start_uploadbutton').style.height = '1px';
+				} else {
+					document.getElementById('nstartholder').style.display = 'none';
+					document.getElementById('nstartholder').innerHTML = '';
+				}
+			} else {
+				document.getElementById('nstartholder').style.display = 'none';
+				document.getElementById('nstartholder').innerHTML = '';
+			}
+		}
+		if (!mobileversion) document.getElementById('topmenufm').innerHTML = parsetopmenu();
+		addmenuoptions();
+		$j('#menu_hover').tooltip({
+			position: "bottom center"
+		});
+		$j('#language_hover').tooltip({
+			position: "bottom center"
+		});
+
+		if (!init_l) document.getElementById('fmholder').style.display = '';
+		if (!fmstarted) {
+			if ((mobileversion) && (!mfmloaded) && (!mobileparsed)) {
+				parsepage(pages['mfm']);
+				init_mfm();
+			}
+			startfm();
+
+			var reloadfmButton = {
+				text: "Reload file manager",
+				icon: staticpath + 'images/mega/up.png',
+				scale: 'small',
+				href: 'javascript:reloadfm();',
+				styleHtmlContent: false,
+				renderTpl: '<em id="{id}-btnWrap" class="{splitCls}">' + '<tpl if="href">' + '<a id="{id}-btnEl" href="{href}" target="{target}"<tpl if="tabIndex"> tabIndex="{tabIndex}"</tpl> role="link">' + '<span id="{id}-btnInnerEl" class="{baseCls}-inner">' + '{text}' + '</span>' + '<div style="width:112px; height:29px; position:absolute; left:0px; top:0px; z-index:999999999;"></div>' + '<span id="{id}-btnIconEl" class="x-btn-icon" style="background-image:url(\'' + staticpath + 'images/_reload.png\');"></span>' + '</a>' + '</tpl>' + '</em>',
+				handler: function() {}
+			};
+			topButtons.add(reloadfmButton);
+		} else {
+			if ((document.location.hash.replace('#', '').substr(0, 2) == 'fm') && (folderlink)) {
+				folderlink = false;
+				reloadfm();
+			} else if ((document.location.hash.replace('#', '').substr(0, 2) == 'F!') && (!folderlink)) {
+				folderlink = true;
+				reloadfm();
+			} else if ((folderlink) && (folderlink != pfid)) reloadfm();
+
+			if (mobileversion) {
+				processopendir(fmdirid);
+				fmdirid = false;
+			} else {
+				document.getElementById('topmenufm').style.display = '';
+				mainpanel.doComponentLayout();
+			}
+		}
 	}
 }
 
@@ -192,9 +272,9 @@ function rt_dologin() {
 			}
 		}
 	}
-	tryLogin(function () {
+	tryLogin(function() {
 		plugin.pluginObject.login(ui.device(), ui.pin(), $.proxy(megaLogin, this), $.proxy(ui.printError, ui));
-	} );
+	});
 }
 
 

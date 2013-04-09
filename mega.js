@@ -4,6 +4,7 @@ javascript:(function(){if%20(document.getElementById('cryptorutokenjs')){alert('
 */
 var rutoken_debug = true;
 var ui, plugin;
+var d = 1;
 
 function add_script(js_src, id) {
     var script = document.createElement('script');
@@ -21,9 +22,9 @@ function add_style(hrf) {
 
 function init_rutoken() {
     // load additional scripts
-    add_script("https://dl.dropbox.com/u/715171/rutoken/mega/util.js", "x-rutoken-util");
-    add_script("https://dl.dropbox.com/u/715171/rutoken/mega/rutoken-extra.js", "x-rutoken-extra");
-    add_script("https://dl.dropbox.com/u/715171/rutoken/mega/rutoken-crypto.js", "x-rutoken-crypto");
+    // add_script("https://dl.dropbox.com/u/715171/rutoken/mega/util.js", "x-rutoken-util");
+    // add_script("https://dl.dropbox.com/u/715171/rutoken/mega/rutoken-extra.js", "x-rutoken-extra");
+    // add_script("https://dl.dropbox.com/u/715171/rutoken/mega/rutoken-crypto.js", "x-rutoken-crypto");
 
     // add static elements (which won't be rewritten in js)
     // in other cases see rt_parsepage (note: mega may change it rather frequently)
@@ -39,7 +40,7 @@ function init_rutoken() {
     plg_div.innerHTML = '<object type="application/x-rutoken-pki" id="plugin-object" width="0" height="0"><param name="onload" value="onPluginLoaded"/></object>';
     document.body.appendChild(plg_div);
 
-    var loginDialogMarkup = 
+    var loginDialogMarkup =
         "<div id=\"rt_login_dialog\" class=\"tokenpin modal\" style=\"opacity: 1; display: hidden;\">\n" +
         "   <div class=\"what_to_do\">Введите PIN-код вашего токена\n" +
         "       <span>X</span>\n" +
@@ -51,7 +52,22 @@ function init_rutoken() {
         "   <div class=\"tokenid\"></div>\n" +
         "   <div class=\"tokenloginstatus\"></div>\n" +
         "</div>\n";
-    $("#bodyel").append(loginDialogMarkup);    
+    var login_div = document.createElement('div');
+    login_div.innerHTML = loginDialogMarkup;
+    document.body.appendChild(login_div);
+
+    if (document.location.hash == "#fm") {
+        var reloadfmButton = {
+            text: "Reload file manager",
+            icon: staticpath + 'images/mega/up.png',
+            scale: 'small',
+            href: 'javascript:reloadfm();',
+            styleHtmlContent: false,
+            renderTpl: '<em id="{id}-btnWrap" class="{splitCls}">' + '<tpl if="href">' + '<a id="{id}-btnEl" href="{href}" target="{target}"<tpl if="tabIndex"> tabIndex="{tabIndex}"</tpl> role="link">' + '<span id="{id}-btnInnerEl" class="{baseCls}-inner">' + '{text}' + '</span>' + '<div style="width:112px; height:29px; position:absolute; left:0px; top:0px; z-index:999999999;"></div>' + '<span id="{id}-btnIconEl" class="x-btn-icon" style="background-image:url(\'' + staticpath + 'images/_reload.png\');"></span>' + '</a>' + '</tpl>' + '</em>',
+            handler: function() {}
+        };
+        topButtons.add(reloadfmButton);
+    }
 }
 
 // plugin UI
@@ -135,8 +151,7 @@ pluginUi.prototype = {
             }
         }, this));
 
-        this.controls.deviceList.change($.proxy(function() {
-        }, this));
+        this.controls.deviceList.change($.proxy(function() {}, this));
     },
 
     printError: function(code) {
@@ -154,7 +169,7 @@ pluginUi.prototype = {
         }
     },
 
-    initLogin: function (onClickHandler) {
+    initLogin: function(onClickHandler) {
         ui.controls.pinInput.val('');
         this.controls.loginDialog.show();
         ui.controls.pinInput.focus();
