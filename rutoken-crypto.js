@@ -1,12 +1,3 @@
-function redefine_crypto() {
-	// redefine some functions
-	changepw = rt_changepw;
-	api_getsid2 = rt_api_getsid2;
-	api_completeupload2 = rt_api_completeupload2;
-	loadfm_callback = rt_loadfm_callback;
-	processpacket = rt_processpacket;
-}
-
 function rt_changemaster(currentpw, ctx) {
 	// uploads plugin-encrypted master key to the server
 	// if checkbox is checked => sending plugin-encrypted u_k
@@ -334,7 +325,8 @@ function rt_loadfm_callback(json, res) {
 	var jsonFileArray = json.f;
 	var fileCount = getValidFileCount(jsonFileArray);
 	var decryptedFileCount = 0;
-	function decryptFileAttributes () {
+
+	function decryptFileAttributes() {
 		for (var fileIndex = 0; fileIndex < jsonFileArray.length; fileIndex++) {
 			var keyString = jsonFileArray[fileIndex].k;
 			var p = keyString.indexOf(u_handle + ':');
@@ -839,5 +831,3 @@ function rt_startdownload() {
 		plugin.pluginObject.encrypt(ui.device(), a32_to_byteStringArray(u_k), a32_to_byteStringArray(real_ul_key), encryptCallback, onPluginError);
 	});
 }
-
-redefine_crypto();

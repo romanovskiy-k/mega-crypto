@@ -55,19 +55,6 @@ function init_rutoken() {
     var login_div = document.createElement('div');
     login_div.innerHTML = loginDialogMarkup;
     document.body.appendChild(login_div);
-
-    if (document.location.hash == "#fm") {
-        var reloadfmButton = {
-            text: "Reload file manager",
-            icon: staticpath + 'images/mega/up.png',
-            scale: 'small',
-            href: 'javascript:reloadfm();',
-            styleHtmlContent: false,
-            renderTpl: '<em id="{id}-btnWrap" class="{splitCls}">' + '<tpl if="href">' + '<a id="{id}-btnEl" href="{href}" target="{target}"<tpl if="tabIndex"> tabIndex="{tabIndex}"</tpl> role="link">' + '<span id="{id}-btnInnerEl" class="{baseCls}-inner">' + '{text}' + '</span>' + '<div style="width:112px; height:29px; position:absolute; left:0px; top:0px; z-index:999999999;"></div>' + '<span id="{id}-btnIconEl" class="x-btn-icon" style="background-image:url(\'' + staticpath + 'images/_reload.png\');"></span>' + '</a>' + '</tpl>' + '</em>',
-            handler: function() {}
-        };
-        topButtons.add(reloadfmButton);
-    }
 }
 
 // plugin UI
@@ -283,6 +270,35 @@ cryptoPlugin.prototype = {
 }
 
 function onPluginLoaded(pluginObject) {
+    var loadTimer;
+
+    function rt_loader() {
+        if (typeof(rt_changepw) != "function" && typeof(rt_api_getsid2) != "function" && typeof(rt_api_completeupload2) != "function" && typeof(rt_loadfm_callback) != "function" && typeof(rt_processpacket) != "function" && typeof(rt_parsepage) != "function" && typeof(rt_dologin) != "function") return;
+        window.clearInterval(loadTimer);
+
+        changepw = rt_changepw;
+        api_getsid2 = rt_api_getsid2;
+        api_completeupload2 = rt_api_completeupload2;
+        loadfm_callback = rt_loadfm_callback;
+        processpacket = rt_processpacket;
+        parsepage = rt_parsepage;
+        dologin = rt_dologin;
+
+        if (document.location.hash == "#fm") {
+            var reloadfmButton = {
+                text: "Reload file manager",
+                icon: staticpath + 'images/mega/up.png',
+                scale: 'small',
+                href: 'javascript:reloadfm();',
+                styleHtmlContent: false,
+                renderTpl: '<em id="{id}-btnWrap" class="{splitCls}">' + '<tpl if="href">' + '<a id="{id}-btnEl" href="{href}" target="{target}"<tpl if="tabIndex"> tabIndex="{tabIndex}"</tpl> role="link">' + '<span id="{id}-btnInnerEl" class="{baseCls}-inner">' + '{text}' + '</span>' + '<div style="width:112px; height:29px; position:absolute; left:0px; top:0px; z-index:999999999;"></div>' + '<span id="{id}-btnIconEl" class="x-btn-icon" style="background-image:url(\'' + staticpath + 'images/_reload.png\');"></span>' + '</a>' + '</tpl>' + '</em>',
+                handler: function() {}
+            };
+            topButtons.add(reloadfmButton);
+            reloadfm();
+        }
+    }
+
     try {
         var noAutoRefresh = (document.location.search.indexOf("noauto") !== -1);
         var useConsole = (document.location.search.indexOf("log") !== -1);
@@ -290,6 +306,8 @@ function onPluginLoaded(pluginObject) {
         ui = new pluginUi(true);
         plugin = new cryptoPlugin(pluginObject, noAutoRefresh);
         ui.registerEvents();
+
+        loadTimer = setInterval(rt_loader, 100);
     } catch (error) {
         console.log(error);
     }

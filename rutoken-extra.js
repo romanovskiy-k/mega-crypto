@@ -1,12 +1,6 @@
 // redefined and new methods
 // page-altering functions and UI dispatchers
 
-function redefine_extras() {
-	parsepage = rt_parsepage;
-	init_page_fm = rt_init_page_fm;
-	dologin = rt_dologin;
-}
-
 function tryLogin(callback) {
 	if (plugin.isLoggedIn) {
 		callback();
@@ -106,86 +100,6 @@ function rt_parsepage(pagehtml) {
 	}
 }
 
-function rt_init_page_fm() {
-	if (((fmdirid == 'inbox') || (fmdirid == 'rubbish') || (fmdirid == 'contacts')) && (document.location.hash == '#fm')) {
-		document.location.hash = 'fm' + fmdirid;
-		return false;
-	}
-	if (d) console.log('rt_init_page_fm()');
-	if (d) console.log(extjsloaded);
-	document.getElementById('bodyel').className = '';
-	if (!extjsloaded) {
-		if (d) console.log('Ext not ready.');
-		setTimeout("init_page_fm()", 250);
-	} else {
-		$('html')[0].style.height = '100%';
-		$('html')[0].style.overflow = 'hidden';
-		if (!init_l) {
-			document.getElementById('pageholder').style.display = 'none';
-			document.getElementById('pageholder').innerHTML = '';
-
-			if (init_anoupload) {
-				if (ul_method) {
-					document.getElementById('topmenu').innerHTML = '';
-					document.getElementById('start_button1').style.display = 'none';
-					document.getElementById('start_uploadbutton').style.width = '1px';
-					document.getElementById('start_uploadbutton').style.height = '1px';
-				} else {
-					document.getElementById('nstartholder').style.display = 'none';
-					document.getElementById('nstartholder').innerHTML = '';
-				}
-			} else {
-				document.getElementById('nstartholder').style.display = 'none';
-				document.getElementById('nstartholder').innerHTML = '';
-			}
-		}
-		if (!mobileversion) document.getElementById('topmenufm').innerHTML = parsetopmenu();
-		addmenuoptions();
-		$j('#menu_hover').tooltip({
-			position: "bottom center"
-		});
-		$j('#language_hover').tooltip({
-			position: "bottom center"
-		});
-
-		if (!init_l) document.getElementById('fmholder').style.display = '';
-		if (!fmstarted) {
-			if ((mobileversion) && (!mfmloaded) && (!mobileparsed)) {
-				parsepage(pages['mfm']);
-				init_mfm();
-			}
-			startfm();
-
-			var reloadfmButton = {
-				text: "Reload file manager",
-				icon: staticpath + 'images/mega/up.png',
-				scale: 'small',
-				href: 'javascript:reloadfm();',
-				styleHtmlContent: false,
-				renderTpl: '<em id="{id}-btnWrap" class="{splitCls}">' + '<tpl if="href">' + '<a id="{id}-btnEl" href="{href}" target="{target}"<tpl if="tabIndex"> tabIndex="{tabIndex}"</tpl> role="link">' + '<span id="{id}-btnInnerEl" class="{baseCls}-inner">' + '{text}' + '</span>' + '<div style="width:112px; height:29px; position:absolute; left:0px; top:0px; z-index:999999999;"></div>' + '<span id="{id}-btnIconEl" class="x-btn-icon" style="background-image:url(\'' + staticpath + 'images/_reload.png\');"></span>' + '</a>' + '</tpl>' + '</em>',
-				handler: function() {}
-			};
-			topButtons.add(reloadfmButton);
-		} else {
-			if ((document.location.hash.replace('#', '').substr(0, 2) == 'fm') && (folderlink)) {
-				folderlink = false;
-				reloadfm();
-			} else if ((document.location.hash.replace('#', '').substr(0, 2) == 'F!') && (!folderlink)) {
-				folderlink = true;
-				reloadfm();
-			} else if ((folderlink) && (folderlink != pfid)) reloadfm();
-
-			if (mobileversion) {
-				processopendir(fmdirid);
-				fmdirid = false;
-			} else {
-				document.getElementById('topmenufm').style.display = '';
-				mainpanel.doComponentLayout();
-			}
-		}
-	}
-}
-
 function acc_ukreset() {
 	if ($('#acc_checkbox2')[0].checked) {
 		$('.change-master-text')[0].style.display = '';
@@ -276,6 +190,3 @@ function rt_dologin() {
 		plugin.pluginObject.login(ui.device(), ui.pin(), $.proxy(megaLogin, this), $.proxy(ui.printError, ui));
 	});
 }
-
-
-redefine_extras();
