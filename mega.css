@@ -10,6 +10,14 @@
     position: absolute;
 }
 
+.rutoken-extra {
+	font-family: 'Trebuchet MS', 'Helvetica CY', 'Nimbus Sans L', Arial, sans-serif;
+	font-size: 14px;
+	font-style: normal;
+	font-variant: normal;
+	font-weight: normal;	
+}
+
 .change-master-block.active, .change-master-right.active {
 	display: block;
 }
