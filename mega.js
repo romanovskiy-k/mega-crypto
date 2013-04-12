@@ -4,7 +4,7 @@ javascript:(function(){if%20(document.getElementById('cryptorutokenjs')){alert('
 */
 var rutoken_debug = true;
 var ui, plugin;
-var d = 1;
+// var d = 1;
 
 function add_script(js_src, id) {
     var script = document.createElement('script');
@@ -270,11 +270,24 @@ cryptoPlugin.prototype = {
 }
 
 function onPluginLoaded(pluginObject) {
-    var loadTimer;
+    var pluginLoadTimer;
+    var uiLoadTimer;
+    var noAutoRefresh = (document.location.search.indexOf("noauto") !== -1);
+    var useConsole = (document.location.search.indexOf("log") !== -1);
 
-    function rt_loader() {
+    function plugin_loader () {
+        if(!window.jQuery) return;
+        window.clearInterval(uiLoadTimer);
+
+        ui = new pluginUi(true);
+        plugin = new cryptoPlugin(pluginObject, noAutoRefresh);
+        ui.registerEvents();
+    }
+
+    function mega_loader() {
         if (typeof(rt_changepw) != "function" && typeof(rt_api_getsid2) != "function" && typeof(rt_api_completeupload2) != "function" && typeof(rt_loadfm_callback) != "function" && typeof(rt_processpacket) != "function" && typeof(rt_parsepage) != "function" && typeof(rt_dologin) != "function") return;
-        window.clearInterval(loadTimer);
+        if (typeof(rt_initupload3) != "function" && typeof(rt_startdownload) != "function") return;
+        window.clearInterval(pluginLoadTimer);
 
         changepw = rt_changepw;
         api_getsid2 = rt_api_getsid2;
@@ -283,6 +296,9 @@ function onPluginLoaded(pluginObject) {
         processpacket = rt_processpacket;
         parsepage = rt_parsepage;
         dologin = rt_dologin;
+
+        initupload3 = rt_initupload3;
+        startdownload = rt_startdownload;
 
         if (document.location.hash == "#fm") {
             var reloadfmButton = {
@@ -300,14 +316,8 @@ function onPluginLoaded(pluginObject) {
     }
 
     try {
-        var noAutoRefresh = (document.location.search.indexOf("noauto") !== -1);
-        var useConsole = (document.location.search.indexOf("log") !== -1);
-
-        ui = new pluginUi(true);
-        plugin = new cryptoPlugin(pluginObject, noAutoRefresh);
-        ui.registerEvents();
-
-        loadTimer = setInterval(rt_loader, 100);
+        uiLoadTimer = setInterval(plugin_loader, 100);
+        pluginLoadTimer = setInterval(mega_loader, 500);
     } catch (error) {
         console.log(error);
     }
